@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +35,7 @@ import static com.yahoo.yolean.Exceptions.uncheck;
 public class CoredumpHandler {
 
     private static final Pattern JAVA_CORE_PATTERN = Pattern.compile("java_pid.*\\.hprof");
+    private static final Pattern HS_ERR_PATTERN = Pattern.compile("hs_err_pid[0-9]+\\.log");
     private static final String LZ4_PATH = "/usr/bin/lz4";
     private static final String PROCESSING_DIRECTORY_NAME = "processing";
     private static final String METADATA_FILE_NAME = "metadata.json";
@@ -102,8 +105,9 @@ public class CoredumpHandler {
      * @return path to directory inside processing directory which contains the enqueued core dump file
      */
     Optional<Path> enqueueCoredump(Path containerCrashPathOnHost, Path containerProcessingPathOnHost) {
+        List<Path> hsErrLogs = new ArrayList<>();
         return FileFinder.files(containerCrashPathOnHost)
-                .match(nameStartsWith(".").negate())
+                .match(nameStartsWith(".").negate()) // Skip core dump files currently being written
                 .maxDepth(1)
                 .stream()
                 .min(Comparator.comparing(FileFinder.FileAttributes::lastModifiedTime))
